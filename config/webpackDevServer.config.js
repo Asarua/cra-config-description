@@ -57,7 +57,15 @@ module.exports = function (proxy, allowedHost) {
     // for files like `favicon.ico`, `manifest.json`, and libraries that are
     // for some reason broken when imported through webpack. If you just want to
     // use an image, put it in `src` and `import` it from JavaScript instead.
-    // 以哪个文件为基准开启服务
+
+    /*
+      默认情况下，WebpackDevServer除了从内存提供的所有虚拟构建产品外，还从当前目录提供物理文件。这是令人困惑的，因为除非我们复制这些文件，
+      否则这些文件将不会自动在生产版本文件夹中可用。但是，复制整个项目目录很危险，因为我们可能会公开敏感文件。
+      取而代之的是，我们建立了一个约定，即仅提供公共目录中的文件。我们的构建脚本会将public复制到“ build”文件夹中。
+      在，index.html中，您可以使用PUBLIC_URL％获取公共文件夹的URL：<Link rel =“ icon” href =“％PUBLIC URL％/ favicon.ico”>
+      在JavaScript代码中，您可以使用process.env访问它。 PUBLICURL-请注意，我们仅建议使用公用文件夹作为favicon.ico'，manifest.json'和
+      通过Webpack导入时由于某种原因而损坏。如果您只想使用图像，请将其放入src并从JavaScript导入。
+    */
     contentBase: paths.appPublic,
     contentBasePublicPath: paths.publicUrlOrPath,
     // By default files from `contentBase` will not trigger a page reload.

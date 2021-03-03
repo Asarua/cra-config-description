@@ -20,6 +20,7 @@ const jest = require('jest');
 const execSync = require('child_process').execSync;
 let argv = process.argv.slice(2);
 
+// 是否在git仓库中
 function isInGitRepository() {
   try {
     execSync('git rev-parse --is-inside-work-tree', { stdio: 'ignore' });
@@ -29,6 +30,7 @@ function isInGitRepository() {
   }
 }
 
+// 是否在Mercurial仓库中
 function isInMercurialRepository() {
   try {
     execSync('hg --cwd . root', { stdio: 'ignore' });
@@ -40,14 +42,16 @@ function isInMercurialRepository() {
 
 // Watch unless on CI or explicitly running all tests
 if (
+  // 如果未配置CI
   !process.env.CI &&
+  // 未配置监听的环境变量
   argv.indexOf('--watchAll') === -1 &&
   argv.indexOf('--watchAll=false') === -1
 ) {
   // https://github.com/facebook/create-react-app/issues/5210
+  // 是否在版本控制仓库中
   const hasSourceControl = isInGitRepository() || isInMercurialRepository();
   argv.push(hasSourceControl ? '--watch' : '--watchAll');
 }
-
 
 jest.run(argv);
