@@ -32,9 +32,11 @@ const chalk = require('chalk')
 
 const postcssNormalize = require('postcss-normalize');
 
+// 获取package.json
 const appPackageJson = require(paths.appPackageJson);
 
 // Source maps are resource heavy and can cause out of memory issue for large source files.
+// source map占用大量资源，可能会使大型源文件出现内存不足的情况
 const shouldUseSourceMap = process.env.GENERATE_SOURCEMAP !== 'false';
 
 const webpackDevClientEntry = require.resolve(
@@ -46,16 +48,20 @@ const reactRefreshOverlayEntry = require.resolve(
 
 // Some apps do not need the benefits of saving a web request, so not inlining the chunk
 // makes for a smoother build process.
+// 是否需要内嵌运行时chunk
 const shouldInlineRuntimeChunk = process.env.INLINE_RUNTIME_CHUNK !== 'false';
 
+// 内联图像大小限制
 const imageInlineSizeLimit = parseInt(
   process.env.IMAGE_INLINE_SIZE_LIMIT || '10000'
 );
 
 // Check if TypeScript is setup
+// 校验是否使用ts配置
 const useTypeScript = fs.existsSync(paths.appTsConfig);
 
 // Get the path to the uncompiled service worker (if it exists).
+// 获取未编译服务进程的路径（如果存在）
 const swSrc = paths.swSrc;
 
 // style files regexes
@@ -94,13 +100,17 @@ module.exports = function (webpackEnv) {
   // Get environment variables to inject into our app.
   const env = getClientEnvironment(paths.publicUrlOrPath.slice(0, -1));
 
+  // 是否使用react热更新
   const shouldUseReactRefresh = env.raw.FAST_REFRESH;
 
   // common function to get style loaders
+  // 公共的css loader函数
   const getStyleLoaders = (cssOptions, preProcessor) => {
     const loaders = [
+      // 如果是开发环境，引入style-loader
       isEnvDevelopment && require.resolve('style-loader'),
       isEnvProduction && {
+        // 如果是生产环境，分割css模块
         loader: MiniCssExtractPlugin.loader,
         // css is located in `static/css`, use '../../' to locate index.html folder
         // in production `paths.publicUrlOrPath` can be a relative path
@@ -109,6 +119,7 @@ module.exports = function (webpackEnv) {
           : {},
       },
       {
+        // 引入 css-loader
         loader: require.resolve('css-loader'),
         options: cssOptions,
       },
@@ -116,6 +127,7 @@ module.exports = function (webpackEnv) {
         // Options for PostCSS as we reference these options twice
         // Adds vendor prefixing based on your specified browser support in
         // package.json
+        // 引入postcss-loader 根据browsers-list添加前缀
         loader: require.resolve('postcss-loader'),
         options: {
           // Necessary for external CSS imports to work
@@ -138,6 +150,7 @@ module.exports = function (webpackEnv) {
         },
       },
     ].filter(Boolean);
+    // 如果存在预处理器
     if (preProcessor) {
       loaders.push(
         {
@@ -148,6 +161,7 @@ module.exports = function (webpackEnv) {
           },
         },
         {
+          // 加载预处理器loader
           loader: require.resolve(preProcessor),
           options: {
             sourceMap: true,
@@ -159,9 +173,12 @@ module.exports = function (webpackEnv) {
   };
 
   return {
+    // 区分开发模式还是生产模式
     mode: isEnvProduction ? 'production' : isEnvDevelopment && 'development',
     // Stop compilation early in production
+    // 在生产环境一旦发现问题就停止编译
     bail: isEnvProduction,
+    // 是否配置source-map
     devtool: isEnvProduction
       ? shouldUseSourceMap
         ? 'source-map'
@@ -358,14 +375,17 @@ module.exports = function (webpackEnv) {
       ],
     },
     module: {
+      // 使丢失的到处成为错误，而不是警告
       strictExportPresence: true,
       rules: [
         // Disable require.ensure as it's not a standard language feature.
+        // 禁用require.ensure因为它不是一个标准的语言功能
         { parser: { requireEnsure: false } },
         {
           // "oneOf" will traverse all following loaders until one will
           // match the requirements. When no loader matches it will fall
           // back to the "file" loader at the end of the loader list.
+          // 当规则匹配时，只使用第一个匹配规则
           oneOf: [
             // TODO: Merge this config once `image/avif` is in the mime-db
             // https://github.com/jshttp/mime-db
@@ -391,7 +411,9 @@ module.exports = function (webpackEnv) {
             },
             // Process application JS with Babel.
             // The preset includes JSX, Flow, TypeScript, and some ESnext features.
+            // 使用babel来处理应用程序的js（应该是业务应用），预处理包括jsx、flow、ts和一些其他的esnext功能
             {
+              // ts 解析器在pnpTs文件
               test: /\.(js|mjs|jsx|ts|tsx)$/,
               include: paths.appSrc,
               use: [
@@ -429,6 +451,7 @@ module.exports = function (webpackEnv) {
                     // This is a feature of `babel-loader` for webpack (not Babel itself).
                     // It enables caching results in ./node_modules/.cache/babel-loader/
                     // directory for faster rebuilds.
+                    // 这是webpack的babel-loader的一个功能（不是babel自带的），他可以缓存编译结果从而可以最快的重新编译
                     cacheDirectory: true,
                     // See #6846 for context on why cacheCompression is disabled
                     cacheCompression: false,
@@ -436,6 +459,7 @@ module.exports = function (webpackEnv) {
                   },
                 },
                 {
+                  // 通过快捷键直接找到组件位置并打开编辑器的插件
                   loader: 'react-dev-inspector/plugins/webpack/inspector-loader'
                 }
               ],
@@ -443,6 +467,7 @@ module.exports = function (webpackEnv) {
             },
             // Process any JS outside of the app with Babel.
             // Unlike the application JS, we only compile the standard ES features.
+            // 使用babel处理除了应用js之外的其他任何js，不像应用js，我们只需要编译标准es功能
             {
               test: /\.(js|mjs)$/,
               exclude: /@babel(?:\/|\\{1,2})runtime/,
@@ -476,6 +501,7 @@ module.exports = function (webpackEnv) {
             // of CSS.
             // By default we support CSS Modules with the extension .module.css
             {
+              // 普通css文件编译器
               test: cssRegex,
               exclude: cssModuleRegex,
               use: getStyleLoaders({
@@ -493,6 +519,7 @@ module.exports = function (webpackEnv) {
             // Adds support for CSS Modules (https://github.com/css-modules/css-modules)
             // using the extension .module.css
             {
+              // css module 文件编译器
               test: cssModuleRegex,
               use: getStyleLoaders({
                 importLoaders: 1,
@@ -508,6 +535,7 @@ module.exports = function (webpackEnv) {
             // By default we support SASS Modules with the
             // extensions .module.scss or .module.sass
             {
+              // sass 文件编译器
               test: sassRegex,
               exclude: sassModuleRegex,
               use: getStyleLoaders(
@@ -528,6 +556,7 @@ module.exports = function (webpackEnv) {
             // Adds support for CSS Modules, but using SASS
             // using the extension .module.scss or .module.sass
             {
+              // sass module 文件编译器
               test: sassModuleRegex,
               use: getStyleLoaders(
                 {
@@ -547,6 +576,7 @@ module.exports = function (webpackEnv) {
             // In production, they would get copied to the `build` folder.
             // This loader doesn't use a "test" so it will catch all modules
             // that fall through the other loaders.
+            // 文件编译器，应该是多媒体（视频，音频）之类的
             {
               loader: require.resolve('file-loader'),
               // Exclude `js` files to keep "css" loader working as it injects
@@ -560,6 +590,7 @@ module.exports = function (webpackEnv) {
             },
             // ** STOP ** Are you adding a new loader?
             // Make sure to add the new loader(s) before the "file" loader.
+            // 如果想添加任何新的loader，确保在file-loader之前添加
           ],
         },
       ],
@@ -567,8 +598,10 @@ module.exports = function (webpackEnv) {
     plugins: [
       // Generates an `index.html` file with the <script> injected.
       new DefinePlugin({
+        // 将当前的绝对路径添加到一个插件中
         'process.env.PWD': JSON.stringify(process.env.PWD),
       }),
+      // 编译进度条
       new ProgressBarPlugin({
         complete: "█",
         format: `${chalk.green('Building')} [ ${chalk.green(':bar')} ] ${chalk.bold(':percent')}`,
@@ -578,19 +611,29 @@ module.exports = function (webpackEnv) {
         Object.assign(
           {},
           {
+            // 注入js
             inject: true,
+            // 默认依赖到模板
             template: paths.appHtml,
           },
           isEnvProduction
             ? {
                 minify: {
+                  // 去除注释
                   removeComments: true,
+                  // 压缩空格
                   collapseWhitespace: true,
+                  // 删除多余属性
                   removeRedundantAttributes: true,
+                  // 使用短的Doctype
                   useShortDoctype: true,
+                  // 删除空属性
                   removeEmptyAttributes: true,
+                  // 删除样式链接类型属性
                   removeStyleLinkTypeAttributes: true,
+                  // 保持斜杠闭合
                   keepClosingSlash: true,
+                  // 压缩js、css、url
                   minifyJS: true,
                   minifyCSS: true,
                   minifyURLs: true,
@@ -610,17 +653,21 @@ module.exports = function (webpackEnv) {
       // <link rel="icon" href="%PUBLIC_URL%/favicon.ico">
       // It will be an empty string unless you specify "homepage"
       // in `package.json`, in which case it will be the pathname of that URL.
+      // 替换public中index.html里面的PUBLIC_URL路径
       new InterpolateHtmlPlugin(HtmlWebpackPlugin, env.raw),
       // This gives some necessary context to module not found errors, such as
       // the requesting resource.
+      // 添加未找到模块的上下文，比如请求的资源
       new ModuleNotFoundPlugin(paths.appPath),
       // Makes some environment variables available to the JS code, for example:
       // if (process.env.NODE_ENV === 'production') { ... }. See `./env.js`.
       // It is absolutely essential that NODE_ENV is set to production
       // during a production build.
       // Otherwise React will be compiled in the very slow development mode.
+      // 将环境变量用于js环境
       new webpack.DefinePlugin(env.stringified),
       // This is necessary to emit hot updates (CSS and Fast Refresh):
+      // 热更新
       isEnvDevelopment && new webpack.HotModuleReplacementPlugin(),
       // Experimental hot reloading for React .
       // https://github.com/facebook/react/tree/master/packages/react-refresh
@@ -640,14 +687,17 @@ module.exports = function (webpackEnv) {
       // Watcher doesn't work well if you mistype casing in a path so we use
       // a plugin that prints an error when you attempt to do this.
       // See https://github.com/facebook/create-react-app/issues/240
+      // 如果在监听到错误的路径它会停止工作，使用这个我们可以将错误抛出
       isEnvDevelopment && new CaseSensitivePathsPlugin(),
       // If you require a missing module and then `npm install` it, you still have
       // to restart the development server for webpack to discover it. This plugin
       // makes the discovery automatic so you don't have to restart.
       // See https://github.com/facebook/create-react-app/issues/186
+      // 监听缺少的模块，并将其抛出
       isEnvDevelopment &&
         new WatchMissingNodeModulesPlugin(paths.appNodeModules),
       isEnvProduction &&
+        // css切割
         new MiniCssExtractPlugin({
           // Options similar to the same options in webpackOptions.output
           // both options are optional
@@ -660,6 +710,7 @@ module.exports = function (webpackEnv) {
       //   `index.html`
       // - "entrypoints" key: Array of files which are included in `index.html`,
       //   can be used to reconstruct the HTML if necessary
+      // 生成静态资源清单（用于后段模板渲染时的文件对应路径）
       new ManifestPlugin({
         fileName: 'asset-manifest.json',
         publicPath: paths.publicUrlOrPath,
@@ -683,9 +734,11 @@ module.exports = function (webpackEnv) {
       // solution that requires the user to opt into importing specific locales.
       // https://github.com/jmblog/how-to-optimize-momentjs-with-webpack
       // You can remove this if you don't use Moment.js:
+      // moment.js默认会携带大量的语言环境包，要求指定确认的语言环境，使用这个插件移除其他语言包
       new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
       // Generate a service worker script that will precache, and keep up to date,
       // the HTML & assets that are part of the webpack build.
+      // 在缓存之前开启一个服务，用于保持html和静态文件在webpack编译之后的不断更新
       isEnvProduction &&
         fs.existsSync(swSrc) &&
         new WorkboxWebpackPlugin.InjectManifest({
@@ -699,6 +752,7 @@ module.exports = function (webpackEnv) {
         }),
       // TypeScript type checking
       useTypeScript &&
+        // 用于新建进程执行类型检查，因此余姚关闭ts-loader自身的类型检查功能，即设置transpileOnly为true
         new ForkTsCheckerWebpackPlugin({
           typescript: resolve.sync('typescript', {
             basedir: paths.appNodeModules,
@@ -750,6 +804,7 @@ module.exports = function (webpackEnv) {
     ].filter(Boolean),
     // Some libraries import Node modules but don't use them in the browser.
     // Tell webpack to provide empty mocks for them so importing them works.
+    // 有些库是引入的node模块，但是不在浏览器中使用，设置这个是为了向webpack注入空的mock对象来使他们正常工作
     node: {
       module: 'empty',
       dgram: 'empty',
@@ -762,6 +817,7 @@ module.exports = function (webpackEnv) {
     },
     // Turn off performance processing because we utilize
     // our own hints via the FileSizeReporter
+    // 关闭性能处理，因为我们通过FileSizeReporter使用自己的提示
     performance: false,
   };
 };
